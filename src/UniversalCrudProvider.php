@@ -21,9 +21,9 @@ class UniversalCrudProvider extends ServiceProvider
 
             // React компонентуудыг publish хийх
             $this->publishes([
-                __DIR__ . '/../resources/js/components' => resource_path('js/components/universal-crud'),
-                __DIR__ . '/../resources/js/utils' => resource_path('js/utils'),
-                __DIR__ . '/../resources/js/lang' => resource_path('js/lang'),
+                __DIR__ . '/resources/js/components' => resource_path('js/components/universal-crud'),
+                __DIR__ . '/resources/js/utils' => resource_path('js/utils'),
+                __DIR__ . '/resources/js/lang' => resource_path('js/lang'),
             ], 'universal-crud-assets');
         }
     }
