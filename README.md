@@ -88,10 +88,24 @@ Write configuration to components.json. Proceed? › yes
 
 **2. Шаардлагатай компонентуудыг нэмэх:**
 
-Дараах командыг ажиллуулж `universal-crud`-д шаардлагатай бүх компонентийг суулгана уу.
+`universal-crud` сан нь дараах `shadcn/ui` компонентуудаас хамаарна:
+
+- `button`
+- `input`
+- `select`
+- `table`
+- `dialog`
+- `alert-dialog`
+- `skeleton`
+- `card`
+- `label`
+- `switch`
+- `textarea`
+
+Дараах командыг ажиллуулж эдгээр компонентийг нэг дор суулгана уу.
 
 ```bash
-npx shadcn-ui@latest add button input select table dialog alert-dialog skeleton card label switch textarea
+npx shadcn@latest add button input select table dialog alert-dialog skeleton card label switch textarea
 ```
 
 ### Алхам 5: Vite тохиргоог шинэчлэх
