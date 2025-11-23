@@ -946,7 +946,12 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                             {item.type === "richtext" && (
                                 <TextEditor
                                     field={item.field}
-                                    data={getValueFromForm(item.field)}
+                                    // Editor.js нь JSON объект хүлээж авдаг тул string-г parse хийнэ
+                                    data={(() => {
+                                        try {
+                                            return JSON.parse(getValueFromForm(item.field));
+                                        } catch (e) { return {}; }
+                                    })()}
                                     handleChange={handleChangeRichText}
                                     uploadUrl={item.uploadUrl} // uploadUrl-г prop-оор дамжуулах
                                     toggleUpload={() => setUploading(!uploading)}

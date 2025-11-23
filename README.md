@@ -55,6 +55,8 @@ php artisan universal-crud:install
 
 Дээрх командын дараа `package.json` файлд нэмэгдсэн шинэ багцуудыг суулгана уу.
 
+> **Тайлбар:** `universal-crud:install` команд нь таны `package.json` файлд `UniversalCrud` компонент болон түүний хамааралтай багцууд болох `react-table`, `lucide-react`, `sonner`, `ckeditor5` зэргийг автоматаар нэмнэ.
+
 ```bash
 npm install
 ```

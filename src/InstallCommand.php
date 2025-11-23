@@ -26,7 +26,7 @@ class InstallCommand extends Command
         $this->comment('Дараагийн алхмууд:');
         $this->comment('1. "npm install" командыг ажиллуулж, шинээр нэмэгдсэн багцуудыг суулгана уу.');
         $this->comment('2. "npm run dev" командыг ажиллуулж, asset-уудаа build хийнэ үү.');
-        $this->comment('3. Шаардлагатай shadcn/ui компонентуудыг суулгана уу: npx shadcn-ui@latest add ...');
+        $this->comment('3. Шаардлагатай shadcn/ui компонентуудыг суулгана уу: npx shadcn@latest add ...');
 
         return self::SUCCESS;
     }
@@ -51,10 +51,14 @@ class InstallCommand extends Command
             "xlsx" => "^0.18.5",
             "file-saver" => "^2.0.5",
             "yet-another-react-lightbox" => "^3.20.0",
-            "@ckeditor/ckeditor5-react" => "^8.0.0",
-//            "ckeditor5-custom-build" => "file:./ckeditor5", // Жишээ, хэрэглэгч өөрөө тохируулна
             "axios" => "^1.7.2",
-            "sonner" => "^1.5.0"
+            "sonner" => "^1.5.0",
+            "@editorjs/editorjs" => "^2.29.1",
+            "@editorjs/header" => "^2.8.1",
+            "@editorjs/list" => "^1.9.0",
+            "@editorjs/image" => "^2.9.0",
+            "@editorjs/quote" => "^2.6.0",
+            "@editorjs/link" => "^2.6.2"
         ];
 
         $this->updateNodePackages(function ($dependencies) use ($packages) {
