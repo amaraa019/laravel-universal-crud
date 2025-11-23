@@ -17,8 +17,8 @@ import Image from "@ckeditor/ckeditor5-image/src/image";
 import ImageCaption from "@ckeditor/ckeditor5-image/src/imagecaption";
 import ImageStyle from "@ckeditor/ckeditor5-image/src/imagestyle";
 import ImageToolbar from "@ckeditor/ckeditor5-image/src/imagetoolbar";
-import ImageUpload from "@ckeditor/ckeditor5-image-insert/src/imageinsert";
-import SimpleUploadAdapter from "@ckeditor/ckeditor5-upload/src/adapters/simpleuploadadapter";
+// ImageInsertUI нь зураг оруулах UI-г хариуцдаг.
+import { ImageInsert, ImageInsertUI } from '@ckeditor/ckeditor5-image';
 
 class MyUploadAdapter {
     constructor(loader, url) {
@@ -70,13 +70,12 @@ const TextEditor = ({ handleChange, data = "", field, uploadUrl = "/qwerty/uploa
     const editorConfig = {
         plugins: [
             Essentials, Bold, Italic, Paragraph, Link, List,
-            Image, ImageCaption, ImageStyle, ImageToolbar, ImageUpload,
-            SimpleUploadAdapter  // ← SimpleUploadAdapter ашиглаж болно, гэхдээ бид custom ашиглана
+            Image, ImageCaption, ImageStyle, ImageToolbar, ImageInsert, ImageInsertUI, // ImageInsert болон ImageInsertUI-г нэмэх
         ],
         toolbar: [
             "heading", "|",
-            "bold", "italic", "link", "bulletedList", "numberedList", "|",
-            "imageUpload", "insertImage", "blockQuote", "undo", "redo"
+            "bold", "italic", "link", "bulletedList", "numberedList", "blockQuote", "|",
+            "imageInsert", "undo", "redo" // "imageUpload"-г "imageInsert" болгож солих
         ],
         image: {
             toolbar: ["imageStyle:inline", "imageStyle:block", "imageStyle:side", "|", "toggleImageCaption", "imageTextAlternative"]
