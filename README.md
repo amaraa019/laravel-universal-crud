@@ -101,11 +101,12 @@ Write configuration to components.json. Proceed? › yes
 - `label`
 - `switch`
 - `textarea`
+- `collapsible`
 
 Дараах командыг ажиллуулж эдгээр компонентийг нэг дор суулгана уу.
 
 ```bash
-npx shadcn@latest add button input select table dialog alert-dialog skeleton card label switch textarea
+npx shadcn@latest add button input select table dialog alert-dialog skeleton card label switch textarea collapsible
 ```
 
 ### Алхам 5: Vite тохиргоог шинэчлэх
