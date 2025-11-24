@@ -57,6 +57,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Filter, Mail, Pencil, Trash2, Circle, Calendar, Save, AlertTriangle, Image, ArrowUpDown, FileSpreadsheet } from "lucide-react";
 import { t, setLang, getLang } from '@/lang';
+import {toast} from "sonner";
 // FilterField компонентийг тусдаа state-тэй болгосон
 const FilterField = ({ item, onFilterChange }) => {
     const [localValue, setLocalValue] = useState(item.value || ""); // Бие даасан local state
@@ -130,26 +131,28 @@ const FilterField = ({ item, onFilterChange }) => {
     return null;
 };
 const UniversalCrud = ({
-       api_link,
-       auth,
-       dt,
-       methods,
-       attributes,
-       form_attr,
-       subject,
-       modes,
-       filters,
-       lmt,
-       dev,
-       formSize = "w-[1080px]",
-       fontSize = "text-sm",
-       actions: Actions,
-       buttons: Buttons,
-       previewClass,
-       showLangSwitcher = false,
-   }) => {
-    const currentLang = getLang();
+                           api_link,
+                           auth,
+                           dt,
+                           methods = {"update":"put", "delete":"delete", "create":"post"},
+                           attributes,
+                           form_attr,
+                           subject,
+                           modes,
+                           filters,
+                           lmt,
+                           dev,
+                           formSize = "w-[1080px]",
+                           fontSize = "text-sm",
+                           actions: Actions,
+                           lang = 'mn',
+                           buttons: Buttons,
+                           previewClass,
+                           showLangSwitcher = false,
+                       }) => {
     const initialized = useRef(false);
+    setLang(lang);
+
     const limits = [10, 25, 50, 100, 250];
     const [data, setData] = useState(dt.data || []);
     const [meta, setMeta] = useState({
@@ -242,7 +245,10 @@ const UniversalCrud = ({
         return new Promise((resolve) => {
             API.delete(api_link + "/" + item.id).then((res) => {
                 load();
-                resolve({ success: true, message: res.data.msg });
+                resolve({ success: true, message: res.data.message });
+                if(res.data.message){
+                    toast.success(res.data.message,{position:"top-right"});
+                }
             }).catch((error) => {
                 if (error.data) {
                     handleError(error);
@@ -689,7 +695,7 @@ const UniversalCrud = ({
                             {subject} {mode === "add" ? t("add") : t("edit")}
                         </DialogTitle>
                     </DialogHeader>
-                    <Form methods={methods} subject={subject} api_link={api_link} form_attr={form_attr} mode={mode} selected={selected} load={load} dev={dev} />
+                    <Form methods={methods} subject={subject} api_link={api_link} form_attr={form_attr} mode={mode} selected={selected} load={load} dev={dev} setShow={setShow} />
                 </DialogContent>
             </Dialog>
         </div>
@@ -721,7 +727,7 @@ const ErrorWindow = ({ show, code, msg, toggle, meta }) => {
     );
 };
 
-const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected, load, dev }) => {
+const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected, load, dev, setShow }) => {
     const [form, setForm] = useState({});
     const [emptyForm, setEmptyForm] = useState({});
     const [images, setImages] = useState({});
@@ -764,62 +770,48 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
     };
 
     const onSubmit = () => {
-        let fdata = new FormData();
-        // form_attr дээрх төрлүүдийг ашиглан ялгах
-        for (const key in form) {
-            const attr = form_attr.find((item) => item.field === key);
-            if (attr) {
-                if (["image", "file"].includes(attr.type)) {
-                    // Зураг сонгоогүй бол skip хийнэ
-                    if (typeof form[key] !== "object" || !form[key]) {
-                        continue;
+        const handleSuccess = (res) => {
+            load();
+            setForm(emptyForm);
+            setShow(false);
+            if (res.data.message) {
+                toast.success(res.data.message, { position: "top-right" });
+            }
+        };
+
+        const handleError = (e) => {
+            if (e.status === 422) {
+                setErrors(e.data.errors);
+                setTimeout(() => setErrors({}), 10000);
+            }
+        };
+
+        const submitAction = () => {
+            let fdata = new FormData();
+            for (const key in form) {
+                const attr = form_attr.find((item) => item.field === key);
+                if (attr) {
+                    if (["image", "file"].includes(attr.type)) {
+                        if (typeof form[key] !== "object" || !form[key]) {
+                            continue;
+                        }
+                        fdata.append(key, form[key]);
+                    } else {
+                        fdata.append(key, form[key]);
                     }
-                    fdata.append(key, form[key]);
-                } else {
-                    let val = isNumber(form[key]) ? parseFloat(form[key]) : form[key];
-                    fdata.append(key, val);
                 }
             }
-        }
-        const submitAction = () => {
+
             if (mode === "add") {
-                API.post(api_link, fdata, {
-                    headers: { "Content-Type": "multipart/form-data" },
-                }).then(() => {
-                    load();
-                    setForm(emptyForm);
-                }).catch((e) => {
-                    if (e.status === 422) {
-                        setErrors(e.data.errors);
-                        setTimeout(() => setErrors({}), 10000);
-                    }
-                });
+                API.post(api_link, fdata, { headers: { "Content-Type": "multipart/form-data" } })
+                    .then(handleSuccess).catch(handleError);
             } else {
-                const method = methods.update === "post" ? API.post : API.put;
-                // console.log("data pisda",fdata);
-                if(methods.update === "post") {
-                    method(api_link + "/" + form.id, fdata, {
-                        headers: {"Content-Type": "multipart/form-data"},
-                    }).then(() => {
-                        load();
-                        setForm(emptyForm);
-                    }).catch((e) => {
-                        if (e.status === 422) {
-                            setErrors(e.data.errors);
-                            setTimeout(() => setErrors({}), 10000);
-                        }
-                    });
-                }
-                if(methods.update === "put"){
-                    method(api_link + "/" + form.id, form).then(() => {
-                        load();
-                        setForm(emptyForm);
-                    }).catch((e) => {
-                        if (e.status === 422) {
-                            setErrors(e.data.errors);
-                            setTimeout(() => setErrors({}), 10000);
-                        }
-                    });
+                if (methods.update === "post") {
+                    API.post(`${api_link}/${form.id}`, fdata, { headers: { "Content-Type": "multipart/form-data" } })
+                        .then(handleSuccess).catch(handleError);
+                } else { // Default to PUT
+                    API.put(`${api_link}/${form.id}`, form)
+                        .then(handleSuccess).catch(handleError);
                 }
             }
         };
@@ -827,7 +819,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
         return (
             <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button type="submit" className="w-32" onClick={(e) => e.preventDefault()}>
+                    <Button type="button" className="w-32">
                         <Save className="mr-2" size={16} /> {t("save")}
                     </Button>
                 </AlertDialogTrigger>
@@ -1001,7 +993,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                     onValueChange={(value) => {
                                         setForm(prev => ({ ...prev, [item.field]: parseInt(value) }));
                                     }}
-                                > 
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Сонгох" />
                                     </SelectTrigger>

@@ -70,7 +70,7 @@ npm install
 Хэрэв таны төсөлд `shadcn/ui` тохируулагдаагүй бол дараах командыг ажиллуулна уу.
 
 ```bash
-npx shadcn-ui@latest init
+npx shadcn@latest init
 ```
 
 Энэ үед танаас хэд хэдэн асуулт асуух бөгөөд дараах байдлаар хариулахыг зөвлөж байна:
@@ -111,35 +111,7 @@ Write configuration to components.json. Proceed? › yes
 npx shadcn@latest add button input select table dialog alert-dialog skeleton card label switch textarea collapsible
 ```
 
-### Алхам 5: Vite тохиргоог шинэчлэх
-
-Таны төслийн `vite.config.js` файлыг нээж, `resolve.alias` хэсэгт `@` alias-г нэмж өгнө үү. Энэ нь `universal-crud` компонентууд дотоод файлуудаа зөв олоход тусална.
-
-```javascript
-// vite.config.js
-
-import { defineConfig } from 'vite';
-import laravel from 'laravel-vite-plugin';
-import react from '@vitejs/plugin-react';
-import path from 'path'; // Энэ мөрийг нэмэх
-
-export default defineConfig({
-    plugins: [
-        laravel({
-            input: 'resources/js/app.jsx',
-            refresh: true,
-        }),
-        react(),
-    ],
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, './resources/js'), // Энэ хэсгийг нэмэх
-        },
-    },
-});
-```
-
-### Алхам 6: .env файл тохируулах
+### Алхам 5: .env файл тохируулах
 
 Төслийнхөө `.env` файлыг нээж, API-ийн үндсэн хаягийг зааж өгнө үү.
 
@@ -147,7 +119,7 @@ export default defineConfig({
 VITE_API_URL="${APP_URL}/api"
 ```
 
-### Алхам 7: Development сервер ажиллуулах
+### Алхам 6: Development сервер ажиллуулах
 
 Бүх тохиргоог хийж дууссаны дараа development серверийг ажиллуулна уу.
 
@@ -178,11 +150,9 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    // API route-д зориулсан функц
-    public function indexApi(Request $request)
+    public function index(Request $request)
     {
         $query = User::query();
-
         // Шүүлт хийх жишээ
         if ($request->has('name')) {
             $query->where('name', 'like', '%' . $request->name . '%');
@@ -190,15 +160,12 @@ class UserController extends Controller
         if ($request->has('email')) {
             $query->where('email', 'like', '%' . $request->email . '%');
         }
-
-        return $query->paginate($request->input('limit', 10));
-    }
-
-    // Web route-д зориулсан функц
-    public function indexWeb(Request $request)
-    {
+        $data = $query->paginate($request->input('limit', 10));
+        if($request->wantsJson()){
+            return response()->json($data);
+        }
         return Inertia::render('Users/Index', [
-            'dt' => $this->indexApi($request) // Анхны өгөгдлийг дамжуулах
+            'dt' => $data // Анхны өгөгдлийг дамжуулах
         ]);
     }
 
@@ -214,10 +181,7 @@ class UserController extends Controller
 // routes/web.php
 use App\Http\Controllers\UserController;
 
-Route::get('/users', [UserController::class, 'indexWeb'])->name('users.index');
-
-// routes/api.php
-Route::apiResource('users', UserController::class);
+Route::get('users', [UserController::class, 'indexWeb'])->name('users.index');
 ```
 
 ### 2. Frontend тохиргоо (React Page)
@@ -295,10 +259,12 @@ export default function Index({ auth, dt }) {
 | `modes` | `array` | Идэвхжүүлэх үйлдлүүдийн жагсаалт. Боломжит утгууд: `add`, `edit`, `delete`, `export`. |
 | `methods` | `object` | Засах үйлдэл `PUT` биш `POST` байх тохиолдолд ашиглана. Жишээ: `{ update: "post" }`. |
 | `auth` | `object` | Inertia-аас ирэх `auth` объект. |
+| `lang` | `string` | Компонентийн хэлийг тохируулна. Боломжит утга: `mn`, `en`. (Анхдагч: `mn`) |
+| `showLangSwitcher` | `boolean` | `true` байвал хэл солих товчлуурыг харуулна. (Анхдагч: `false`) |
 | `lmt` | `number` | Нэг хуудсанд харуулах мөрийн тооны анхдагч утга. (Default: `10`) |
 | `formSize` | `string` | Формын цонхны өргөн. Жишээ: `w-[1080px]`. (Default: `w-[1080px]`) |
-| `buttons` | `ReactNode` | Хүснэгтийн толгой хэсэгт нэмэлт товчлуур, компонент оруулах. |
-| `actions` | `ReactNode` | Хүснэгтийн мөр бүрийн "Үйлдэл" баганад нэмэлт товчлуур, компонент оруулах. |
+| `buttons` | `ReactNode` | Хүснэгтийн толгой хэсэгт нэмэлт товчлуур, компонент оруулах функц. |
+| `actions` | `ReactNode` | Хүснэгтийн мөр бүрийн "Үйлдэл" баганад нэмэлт товчлуур, компонент оруулах функц. |
 | `dev` | `boolean` | `true` байвал формын доорх `state` мэдээллийг харуулна. (Default: `false`) |
 
 #### `attributes` prop-ийн дэлгэрэнгүй тайлбар
@@ -349,6 +315,62 @@ export default function Index({ auth, dt }) {
     // `preview: true` гэж зааснаар зураг дээр дарахад томруулж харах боломжтой болно.
     { label: "Зураг", type: "image", display: ["image_url"], preview: true, imageFallback: "/img/no-image.jpg" }
     ```
+
+#### `Buttons` болон `Actions` prop-ийн дэлгэрэнгүй тайлбар
+
+Эдгээр пропууд нь компонентийн стандарт үйлдлүүд дээр нэмэлт, өөрийн гэсэн товчлуур, логикийг нэмэх боломжийг олгодог.
+
+**1. `buttons` prop-ийн жишээ**
+
+Хүснэгтийн толгой хэсэгт нэмэлт товчлуур нэмэх. Энэ компонент нь `data`, `setData`, `load` гэсэн пропуудыг хүлээн авна.
+
+```jsx
+// Users/Index.jsx дотор
+
+const CustomHeaderButtons = ({ data, load }) => {
+    const handleCustomAction = () => {
+        alert(`Нийт ${data.length} хэрэглэгч байна.`);
+    };
+
+    return (
+        <Button variant="outline" onClick={handleCustomAction}>
+            Мэдээлэл харах
+        </Button>
+    );
+};
+
+// ...
+<UniversalCrud
+    {...otherProps}
+    buttons={CustomHeaderButtons}
+/>
+```
+
+**2. `actions` prop-ийн жишээ**
+
+Хүснэгтийн мөр бүрд "И-мэйл илгээх" гэсэн нэмэлт товчлуур нэмэх. Энэ компонент нь `item` (тухайн мөрийн өгөгдөл), `load` зэрэг пропуудыг хүлээн авна.
+
+```jsx
+// Users/Index.jsx дотор
+
+const CustomRowActions = ({ item }) => {
+    const sendEmail = () => {
+        alert(`${item.email} хаяг руу и-мэйл илгээлээ.`);
+    };
+
+    return (
+        <Button variant="secondary" size="sm" onClick={sendEmail} title="И-мэйл илгээх">
+            <Mail size={16} />
+        </Button>
+    );
+};
+
+// ...
+<UniversalCrud
+    {...otherProps}
+    actions={CustomRowActions}
+/>
+```
 
 ---
 
