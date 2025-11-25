@@ -137,7 +137,7 @@ npm run dev
 
 **Controller:**
 
-`UniversalCrud` компонент нь Laravel-ийн стандарт `paginate()` функцийн үр дүнг хүлээн авч ажилладаг.
+`UniversalCrud` компонент нь Laravel-ийн стандарт `Resource Controller`-той хамтран ажиллахад зориулагдсан. Controller доторх `index`, `store`, `update`, `destroy` методууд нь JSON хариу буцаах ёстой.
 
 ```php
 // app/Http/Controllers/UserController.php
@@ -146,42 +146,103 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    /**
+     * Хүснэгтийн өгөгдлийг авч, хуудсыг харуулах
+     */
     public function index(Request $request)
     {
         $query = User::query();
-        // Шүүлт хийх жишээ
-        if ($request->has('name')) {
+
+        // Нэрээр шүүх жишээ
+        if ($request->filled('name')) {
             $query->where('name', 'like', '%' . $request->name . '%');
         }
-        if ($request->has('email')) {
+        // И-мэйлээр шүүх жишээ
+        if ($request->filled('email')) {
             $query->where('email', 'like', '%' . $request->email . '%');
         }
+
         $data = $query->paginate($request->input('limit', 10));
-        if($request->wantsJson()){
+
+        // Хэрэв хүсэлт нь AJAX (JSON) бол зөвхөн өгөгдлийг буцаана
+        if ($request->wantsJson()) {
             return response()->json($data);
         }
+
+        // Энгийн вэб хүсэлт бол Inertia хуудсыг рендер хийнэ
         return Inertia::render('Users/Index', [
             'dt' => $data // Анхны өгөгдлийг дамжуулах
         ]);
     }
 
-    // Бусад CRUD үйлдлүүд (store, update, destroy)
+    /**
+     * Шинэ өгөгдөл хадгалах (Create)
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+        ]);
+
+        $validated['password'] = bcrypt($validated['password']);
+
+        User::create($validated);
+
+        return response()->json(['message' => 'success'], 201); // 201 Created
+    }
+
+    /**
+     * Одоо байгаа өгөгдлийг шинэчлэх (Update)
+     */
+    public function update(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'password' => 'nullable|string|min:8', // Нууц үг заавал шаардлагагүй
+        ]);
+
+        // Хэрэв нууц үг илгээгдсэн бол шинэчилнэ
+        if ($request->filled('password')) {
+            $validated['password'] = bcrypt($validated['password']);
+        } else {
+            unset($validated['password']);
+        }
+
+        $user->update($validated);
+
+        return response()->json(['message' => 'success'], 200); // 200 OK
+    }
+
+    /**
+     * Өгөгдлийг устгах (Delete)
+     */
+    public function destroy(User $user)
+    {
+        $user->delete();
+
+        return response()->json(['message' => 'success'], 200); // 200 OK
+    }
 }
 ```
 
 **Route:**
 
-`routes/web.php` болон `routes/api.php` файлуудад дараах замуудыг тодорхойлно.
+`routes/web.php` болон `routes/api.php` файлуудад дараах замуудыг тодорхойлно. Энэхүү сан нь нэгдсэн `Resource Controller` ашиглах тул `web.php` дотор бүх замыг тодорхойлж өгөх нь илүү хялбар байдаг.
 
 ```php
 // routes/web.php
 use App\Http\Controllers\UserController;
 
-Route::get('users', [UserController::class, 'indexWeb'])->name('users.index');
+// Энэ нь index, store, update, destroy зэрэг бүх шаардлагатай замыг үүсгэнэ.
+Route::resource('users', UserController::class)->middleware(['auth', 'verified']);
 ```
 
 ### 2. Frontend тохиргоо (React Page)
@@ -192,7 +253,7 @@ Route::get('users', [UserController::class, 'indexWeb'])->name('users.index');
 // resources/js/Pages/Users/Index.jsx
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import UniversalCrud from '@/components/universal-crud/UniversalCrud'; // Импорт хийх
+import UniversalCrud from '@/components/UniversalCrud'; // Импорт хийх
 import { Head } from '@inertiajs/react';
 
 export default function Index({ auth, dt }) {
@@ -209,7 +270,7 @@ export default function Index({ auth, dt }) {
     const form_attr = [
         { label: "Нэр", field: "name", type: "text", column: "col-span-6", value: "", required: true },
         { label: "И-мэйл", field: "email", type: "email", column: "col-span-6", value: "", required: true },
-        { label: "Нууц үг", field: "password", type: "password", column: "col-span-6", value: "", required: true },
+        { label: "Нууц үг", field: "password", type: "password", column: "col-span-6", value: "", required: false }, // Засах үед нууц үг заавал шаардлагагүй
     ];
 
     // Шүүлтийн талбаруудыг тодорхойлох
@@ -241,7 +302,7 @@ export default function Index({ auth, dt }) {
                     />
                 </div>
             </div>
-        </AuthenticatedicatedLayout>
+        </AuthenticatedLayout>
     );
 }
 ```
