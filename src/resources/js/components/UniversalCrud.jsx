@@ -314,25 +314,25 @@ const UniversalCrud = ({
     const display = (item, i) => {
         let str = "";
         if (i.display.length > 1) {
-            if (i.relation === null) {
+            if (!i.relation) {
                 i.display.forEach((k, l) => {
-                    str += l === 0 ? item[k] : " " + item[k];
+                    str += (l === 0 ? "" : " ") + (item[k] || "");
                 });
             } else {
+                const path = i.relation.split('.');
+                const relatedObject = path.reduce((acc, part) => acc?.[part], item);
                 i.display.forEach((k, l) => {
-                    str += l === 0 ? (item?.[i.relation]?.[k] || "") : "\n " + (item?.[i.relation]?.[k] || "");
+                    str += (l === 0 ? "" : " ") + (relatedObject?.[k] || "");
                 });
             }
             return str;
         } else if (i.display.length === 1) {
             if (i.relation) {
-                if (i.relation.includes(".")) {
-                    let keys = i.relation.split(".");
-                    let result = item;
-                    for (const key of keys) result = result?.[key];
-                    return result?.[i.display[0]];
-                }
-                return item?.[i.relation]?.[i.display[0]];
+                // `.`-ээр тусгаарлагдсан замыг массив болгох
+                const path = i.relation.split('.');
+                // `reduce` ашиглан nested object-оос утгыг авах
+                const relatedObject = path.reduce((acc, part) => acc?.[part], item);
+                return relatedObject ? relatedObject[i.display[0]] : undefined;
             }
             return item[i.display[0]];
         }
