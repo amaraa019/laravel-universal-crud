@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState, useEffect, useRef, useCallback} from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import API from "@/utils/api";
 import Dropzone from "react-dropzone";
 import * as XLSX from "xlsx";
@@ -57,7 +57,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Filter, Mail, Pencil, Trash2, Circle, Calendar, Save, AlertTriangle, Image, ArrowUpDown, FileSpreadsheet } from "lucide-react";
 import { t, setLang, getLang } from '@/lang';
-import {toast} from "sonner";
+import { toast } from "sonner";
 // FilterField компонентийг тусдаа state-тэй болгосон
 const FilterField = ({ item, onFilterChange }) => {
     const [localValue, setLocalValue] = useState(item.value || ""); // Бие даасан local state
@@ -72,8 +72,8 @@ const FilterField = ({ item, onFilterChange }) => {
         setLocalValue(value);
         onFilterChange({ [item.field]: value }); // Parent-д утгыг дамжуулах
     };
-    return(<div className={"w-[220px]"}>
-        {item.type==="text" &&
+    return (<div className={"w-[220px]"}>
+        {item.type === "text" &&
             <Input
                 type="text"
                 name={item.field}
@@ -83,7 +83,7 @@ const FilterField = ({ item, onFilterChange }) => {
                 className="w-[220px]"
             />
         }
-        {item.type==="number" &&
+        {item.type === "number" &&
             <Input
                 type="number"
                 name={item.field}
@@ -109,7 +109,7 @@ const FilterField = ({ item, onFilterChange }) => {
                 </SelectContent>
             </Select>
         }
-        {item.type==="enum" &&
+        {item.type === "enum" &&
             <Select
                 name={item.field}
                 value={localValue}
@@ -134,7 +134,7 @@ const UniversalCrud = ({
                            api_link,
                            auth,
                            dt,
-                           methods = {"update":"put", "delete":"delete", "create":"post"},
+                           methods = { "update": "put", "delete": "delete", "create": "post" },
                            attributes,
                            form_attr,
                            subject,
@@ -149,6 +149,8 @@ const UniversalCrud = ({
                            buttons: Buttons,
                            previewClass,
                            showLangSwitcher = false,
+                           transformFormData,
+                           transformInitialData,
                        }) => {
     const initialized = useRef(false);
     setLang(lang);
@@ -157,7 +159,7 @@ const UniversalCrud = ({
     const [data, setData] = useState(dt.data || []);
     const [meta, setMeta] = useState({
         ...dt,
-        data:undefined
+        data: undefined
     });
     const [limit, setLimit] = useState(lmt || 10);
     const [filterValues, setFilterValues] = useState({});
@@ -203,7 +205,7 @@ const UniversalCrud = ({
         setFilterValues((prev) => ({ ...prev, ...newFilter }));
     };
     // Excel экспортын функц
-    const exportToExcel = useCallback(async() => {
+    const exportToExcel = useCallback(async () => {
         setExporting(true);
         // Хүснэгтийн толгойг attributes-аас авна (hidden биш талбарууд)
         const headers = attributes
@@ -237,7 +239,8 @@ const UniversalCrud = ({
     }, [data, attributes, subject]);
     const edit = (item) => {
         setMode("edit");
-        setSelected(item);
+        const transformedItem = transformInitialData ? transformInitialData(item) : item;
+        setSelected(transformedItem);
         setShow(true);
     };
 
@@ -246,8 +249,8 @@ const UniversalCrud = ({
             API.delete(api_link + "/" + item.id).then((res) => {
                 load();
                 resolve({ success: true, message: res.data.message });
-                if(res.data.message){
-                    toast.success(res.data.message,{position:"top-right"});
+                if (res.data.message) {
+                    toast.success(res.data.message, { position: "top-right" });
                 }
             }).catch((error) => {
                 if (error.data) {
@@ -543,7 +546,7 @@ const UniversalCrud = ({
                 slides={[{ alt: imgUrl, src: imgUrl, imageFit: "contain" }, ...onlyImg]}
             />
             <ErrorWindow show={showError} toggle={toggleError} code={errorCode} meta={errorMeta} msg={errorMsg} />
-            <div className={"grid grid-cols-12 gap-4 "+fontSize}>
+            <div className={"grid grid-cols-12 gap-4 " + fontSize}>
                 <div className="col-span-12">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -613,9 +616,9 @@ const UniversalCrud = ({
                             <div className="rounded-md border">
                                 <Table>
                                     <TableHeader>
-                                        {table.getHeaderGroups().map((headerGroup,key) => (
+                                        {table.getHeaderGroups().map((headerGroup, key) => (
                                             <TableRow key={key}>
-                                                {headerGroup.headers.map((header,index) => (
+                                                {headerGroup.headers.map((header, index) => (
                                                     <TableHead key={index}>
                                                         {header.isPlaceholder
                                                             ? null
@@ -660,7 +663,7 @@ const UniversalCrud = ({
                                 <div className="flex items-center justify-end space-x-2 py-4">
                                     {meta.links.map((link, index) => {
                                         // Хэрэв filterValues-д утга байвал link дээр залгах
-                                        let modifiedUrl = link.url+`&limit=${limit}`;
+                                        let modifiedUrl = link.url + `&limit=${limit}`;
                                         if (filterValues && Object.keys(filterValues).length > 0) {
                                             const url = new URL(link.url || window.location.href);
                                             Object.entries(filterValues).forEach(([key, value]) => {
@@ -677,7 +680,7 @@ const UniversalCrud = ({
                                             size="sm"
                                             disabled={!link.url} // URL байхгүй бол идэвхгүй болгох
                                             dangerouslySetInnerHTML={{ __html: link.label }} // HTML тэмдэглэгээг зөв харуулах
-                                            onClick={()=>load(modifiedUrl+`&limit=${limit}`)}
+                                            onClick={() => load(modifiedUrl + `&limit=${limit}`)}
                                         />);
                                     })}
                                 </div>
@@ -689,13 +692,13 @@ const UniversalCrud = ({
 
             <Dialog open={show} onOpenChange={setShow}>
                 <DialogTrigger asChild></DialogTrigger>
-                <DialogContent className={`sm:max-w-[${formSize}] z-[1000]`}>
+                <DialogContent className={`sm:max-w-[${formSize}] z-[1000] max-h-[800px] overflow-y-auto`}>
                     <DialogHeader>
                         <DialogTitle>
                             {subject} {mode === "add" ? t("add") : t("edit")}
                         </DialogTitle>
                     </DialogHeader>
-                    <Form methods={methods} subject={subject} api_link={api_link} form_attr={form_attr} mode={mode} selected={selected} load={load} dev={dev} setShow={setShow} />
+                    <Form methods={methods} subject={subject} api_link={api_link} form_attr={form_attr} mode={mode} selected={selected} load={load} dev={dev} setShow={setShow} transformFormData={transformFormData} />
                 </DialogContent>
             </Dialog>
         </div>
@@ -727,7 +730,7 @@ const ErrorWindow = ({ show, code, msg, toggle, meta }) => {
     );
 };
 
-const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected, load, dev, setShow }) => {
+const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected, load, dev, setShow, transformFormData }) => {
     const [form, setForm] = useState({});
     const [emptyForm, setEmptyForm] = useState({});
     const [images, setImages] = useState({});
@@ -736,10 +739,18 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
 
     const convertDateString = (dateString) => {
         if (typeof dateString === "string" && dateString !== "") {
-            const [datePart, timePart] = dateString.split(" ");
-            const [year, month, day] = datePart.split("-");
-            const [hours, minutes, seconds] = timePart.split(":");
-            return new Date(year, month - 1, day, hours, minutes, seconds);
+            if (dateString.includes(" ")) {
+                const [datePart, timePart] = dateString.split(" ");
+                const [year, month, day] = datePart.split("-");
+                if (timePart) {
+                    const [hours, minutes, seconds] = timePart.split(":");
+                    return new Date(year, month - 1, day, hours || 0, minutes || 0, seconds || 0);
+                }
+                return new Date(year, month - 1, day);
+            } else {
+                const [year, month, day] = dateString.split("-");
+                return new Date(year, month - 1, day);
+            }
         }
         return null;
     };
@@ -765,8 +776,19 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleDateChange = (name, value) => {
-        setForm((prev) => ({ ...prev, [name]: convertDatetoString(value), [name + "-date"]: value }));
+    const handleDateChange = (name, value, type = 'datetime') => {
+        if (!value) {
+            setForm((prev) => ({ ...prev, [name]: "", [name + "-date"]: null }));
+            return;
+        }
+        if (type === 'date') {
+            const year = value.getFullYear();
+            const month = String(value.getMonth() + 1).padStart(2, "0");
+            const day = String(value.getDate()).padStart(2, "0");
+            setForm((prev) => ({ ...prev, [name]: `${year}-${month}-${day}`, [name + "-date"]: value }));
+        } else {
+            setForm((prev) => ({ ...prev, [name]: convertDatetoString(value), [name + "-date"]: value }));
+        }
     };
 
     const onSubmit = () => {
@@ -788,16 +810,25 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
 
         const submitAction = () => {
             let fdata = new FormData();
-            for (const key in form) {
+
+            // Apply transformation if provided
+            const dataToSubmit = transformFormData ? transformFormData(form) : form;
+
+            for (const key in dataToSubmit) {
                 const attr = form_attr.find((item) => item.field === key);
                 if (attr) {
                     if (["image", "file"].includes(attr.type)) {
-                        if (typeof form[key] !== "object" || !form[key]) {
+                        if (typeof dataToSubmit[key] !== "object" || !dataToSubmit[key]) {
                             continue;
                         }
-                        fdata.append(key, form[key]);
+                        fdata.append(key, dataToSubmit[key]);
                     } else {
-                        fdata.append(key, form[key]);
+                        fdata.append(key, dataToSubmit[key]);
+                    }
+                } else {
+                    // Include fields that aren't in form_attr (like transformed 'settings')
+                    if (typeof dataToSubmit[key] === 'string' || typeof dataToSubmit[key] === 'number') {
+                        fdata.append(key, dataToSubmit[key]);
                     }
                 }
             }
@@ -810,7 +841,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                     API.post(`${api_link}/${form.id}`, fdata, { headers: { "Content-Type": "multipart/form-data" } })
                         .then(handleSuccess).catch(handleError);
                 } else { // Default to PUT
-                    API.put(`${api_link}/${form.id}`, form)
+                    API.put(`${api_link}/${form.id}`, dataToSubmit)
                         .then(handleSuccess).catch(handleError);
                 }
             }
@@ -850,12 +881,12 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
 
     const Uploader = ({ item }) => {
         let img = null;
-        if(mode === "add"){
+        if (mode === "add") {
             img = images[item.field];
-        }else{
-            if(typeof form[item.field] === "string"){
+        } else {
+            if (typeof form[item.field] === "string") {
                 img = form[item.field]
-            }else{
+            } else {
                 img = images[item.field];
             }
         }
@@ -864,7 +895,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                 onDropAccepted={(im) => handleUpload(im[0], item.field)}
                 multiple={false}
             >
-                {({getRootProps, getInputProps}) => (
+                {({ getRootProps, getInputProps }) => (
                     <div
                         {...getRootProps()}
                         className="border-2 border-dashed rounded-md p-4 text-center hover:border-blue-500 cursor-pointer"
@@ -873,12 +904,12 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                         {form[item.field] ? (
                             <div>
                                 <img className="w-auto h-44 rounded mx-auto"
-                                     src={img} alt=""/>
+                                     src={img} alt="" />
                                 <p className="mt-2">{t("change_image", { label: item.label })}</p>
                             </div>
                         ) : (
                             <div className="py-6">
-                                <Image className="mx-auto" size={24}/>
+                                <Image className="mx-auto" size={24} />
                                 <p>{t("upload_image_placeholder")}</p>
                             </div>
                         )}
@@ -891,7 +922,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
         let new_form = {};
         form_attr.map((item) => {
             new_form[item.field] = item.value;
-            if (item.type === "datetime") new_form[item.field + "-date"] = convertDateString(item.value);
+            if (item.type === "datetime" || item.type === "date") new_form[item.field + "-date"] = convertDateString(item.value);
         });
         setForm(new_form);
         setEmptyForm(new_form);
@@ -904,7 +935,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
         }
         if (mode === "edit") {
             for (let i in selected) {
-                if (i.type==="image") {
+                if (i.type === "image") {
                     setImages((prev) => ({ ...prev, [i]: selected[i] }));
                 }
             }
@@ -914,7 +945,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
     const getValueFromForm = (field, type) => {
         type = type || "string";
         if (type === "string" || type === "enum") return form[field] || "";
-        if (type === "datetime") return convertDateString(form[field]);
+        if (type === "datetime" || type === "date") return convertDateString(form[field]);
         return form[field];
     };
 
@@ -923,140 +954,208 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
             {dev && <div className={"h-[350px] overflow-y-auto"}><pre>{JSON.stringify(form, null, 2)}</pre></div>}
             <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                 <div className="grid grid-cols-12 gap-4">
-                    {form_attr.map((item, key) => !item.hidden && (
-                        <div key={key} className={item?.column || "col-span-6"}>
-                            <Label>{item.label}</Label>
-                            {item.type === "image" && <Uploader item={item} />}
-                            {item.type === "text" && (
-                                <Input
-                                    name={item.field}
-                                    value={getValueFromForm(item.field)}
-                                    onChange={handleChange}
-                                    required={item.required}
-                                />
-                            )}
-                            {item.type === "richtext" && (
-                                <TextEditor
-                                    field={item.field}
-                                    // Editor.js нь JSON объект хүлээж авдаг тул string-г parse хийнэ
-                                    data={(() => {
-                                        try {
-                                            return JSON.parse(getValueFromForm(item.field));
-                                        } catch (e) { return {}; }
-                                    })()}
-                                    handleChange={handleChangeRichText}
-                                    uploadUrl={item.uploadUrl} // uploadUrl-г prop-оор дамжуулах
-                                    toggleUpload={() => setUploading(!uploading)}
-                                />
-                            )}
-                            {item.type === "number" && (
-                                <Input
-                                    type="number"
-                                    name={item.field}
-                                    value={getValueFromForm(item.field)}
-                                    onChange={handleChange}
-                                    required={item.required}
-                                />
-                            )}
-                            {item.type === "textarea" && (
-                                <Textarea
-                                    name={item.field}
-                                    value={getValueFromForm(item.field)}
-                                    onChange={handleChange}
-                                    required={item.required}
-                                    rows={10}
-                                />
-                            )}
-                            {item.type === "email" && (
-                                <Input
-                                    type="email"
-                                    name={item.field}
-                                    value={getValueFromForm(item.field)}
-                                    onChange={handleChange}
-                                    required={item.required}
-                                />
-                            )}
-                            {item.type === "password" && (
-                                <Input
-                                    type="password"
-                                    name={item.field}
-                                    value={getValueFromForm(item.field)}
-                                    onChange={handleChange}
-                                    required={item.required}
-                                />
-                            )}
-
-                            {item.type === "select" && (
-                                <Select
-                                    name={item.field}
-                                    value={getValueFromForm(item.field) ?? item.value}
-                                    onValueChange={(value) => {
-                                        setForm(prev => ({ ...prev, [item.field]: parseInt(value) }));
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Сонгох" />
-                                    </SelectTrigger>
-                                    <SelectContent position="popper" className="z-[1002]">
-                                        {item.options.map((i,k)=><SelectItem key={k} value={i.id}>{i.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                            {item.type === "boolean" && (
-                                <Select
-                                    name={item.field}
-                                    value={getValueFromForm(item.field) ?? parseInt(item.value)}
-                                    onValueChange={(value) => setForm(prev => ({ ...prev, [item.field]: parseInt(value) }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent position="popper" className="z-[1002]">
-                                        <SelectItem value="1">{t("active")}</SelectItem>
-                                        <SelectItem value="0">{t("inactive")}</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
-                            {item.type === "enum" && (
-                                <Select
-                                    name={item.field}
-                                    value={getValueFromForm(item.field)}
-                                    onValueChange={(value) => setForm(prev => ({ ...prev, [item.field]: value }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={item.placeholder ? item.placeholder: t("select_placeholder")}/>
-                                    </SelectTrigger>
-                                    <SelectContent position="popper" className="z-[1002]">
-                                        {item.values.map((i, k) => (
-                                            <SelectItem key={k} value={i.value}>{i.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                            {item.type === "datetime" && (
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="text-2xl" size={24} />
-                                    <DatePicker
-                                        className="bg-transparent rounded-md border-gray-600"
-                                        selected={getValueFromForm(item.field, item.type)}
-                                        showTimeSelect
-                                        onChange={(value) => handleDateChange(item.field, value)}
-                                        timeFormat="HH:mm"
-                                        dateFormat="yyyy-MM-dd hh:mm:ss"
-                                    />
+                    {form_attr.map((item, key) => {
+                        // Handle section headers
+                        if (item.type === "section_header") {
+                            return (
+                                <div key={key} className={item?.column || "col-span-12"}>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2 mb-2">
+                                        {item.label}
+                                    </h3>
                                 </div>
-                            )}
-                            {errors[item.field] && (
-                                <p className="text-red-500 flex items-center gap-1">
-                                    <AlertTriangle size={16} /> {errors[item.field][0]}
-                                </p>
-                            )}
-                        </div>
-                    ))}
+                            );
+                        }
+
+                        // Skip hidden fields
+                        if (item.hidden) return null;
+
+                        return (
+                            <div key={key} className={item?.column || "col-span-6"}>
+                                <Label>{item.label}</Label>
+                                {item.type === "image" && <Uploader item={item} />}
+                                {item.type === "text" && (
+                                    <Input
+                                        name={item.field}
+                                        value={getValueFromForm(item.field)}
+                                        onChange={handleChange}
+                                        required={item.required}
+                                        placeholder={item.placeholder}
+                                    />
+                                )}
+                                {item.type === "richtext" && (
+                                    <TextEditor
+                                        key={item.field + (form?.id || "new")}
+                                        field={item.field}
+                                        // Editor.js нь JSON объект хүлээж авдаг тул string-г parse хийнэ
+                                        data={(() => {
+                                            try {
+                                                const val = getValueFromForm(item.field);
+                                                if (typeof val === 'object' && val !== null) return val;
+                                                return JSON.parse(val || '{}');
+                                            } catch (e) {
+                                                // If parsing fails (e.g. old plain text), try to wrap it in a paragraph
+                                                const rawVal = getValueFromForm(item.field);
+                                                if (rawVal && typeof rawVal === 'string') {
+                                                    return {
+                                                        blocks: [{
+                                                            type: "paragraph",
+                                                            data: { text: rawVal }
+                                                        }]
+                                                    };
+                                                }
+                                                return {};
+                                            }
+                                        })()}
+                                        handleChange={handleChangeRichText}
+                                        uploadUrl={item.uploadUrl} // uploadUrl-г prop-оор дамжуулах
+                                        toggleUpload={() => setUploading(!uploading)}
+                                    />
+                                )}
+                                {item.type === "number" && (
+                                    <Input
+                                        type="number"
+                                        name={item.field}
+                                        value={getValueFromForm(item.field)}
+                                        onChange={handleChange}
+                                        required={item.required}
+                                        step={item.step || "1"}
+                                        placeholder={item.placeholder}
+                                    />
+                                )}
+                                {item.type === "textarea" && (
+                                    <Textarea
+                                        name={item.field}
+                                        value={getValueFromForm(item.field)}
+                                        onChange={handleChange}
+                                        required={item.required}
+                                        rows={10}
+                                    />
+                                )}
+                                {item.type === "email" && (
+                                    <Input
+                                        type="email"
+                                        name={item.field}
+                                        value={getValueFromForm(item.field)}
+                                        onChange={handleChange}
+                                        required={item.required}
+                                    />
+                                )}
+                                {item.type === "password" && (
+                                    <Input
+                                        type="password"
+                                        name={item.field}
+                                        value={getValueFromForm(item.field)}
+                                        onChange={handleChange}
+                                        required={item.required}
+                                    />
+                                )}
+
+                                {item.type === "select" && (
+                                    <Select
+                                        name={item.field}
+                                        value={(() => {
+                                            const val = getValueFromForm(item.field) ?? item.value ?? "";
+                                            return val === "" ? "_empty_" : String(val);
+                                        })()}
+                                        onValueChange={(value) => {
+                                            const rawValue = value === "_empty_" ? "" : value;
+                                            // Check if options use 'id' (legacy/integer) or 'value' (string/mixed)
+                                            // Caveat: If first option is custom "All/None" with value="", it might skew isLegacy detection if it lacks 'id'.
+                                            // Ideally, mixed options should be avoided or normalized.
+                                            const isLegacy = item.options?.[0]?.id !== undefined;
+                                            // If checked against first item and it was false, but purely numeric string came in, we might want to cast if backend needs index?
+                                            // For now, keeping existing logic but normalized for empty token.
+                                            setForm(prev => ({ ...prev, [item.field]: isLegacy && rawValue !== "" ? parseInt(rawValue) : rawValue }));
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={item.placeholder || "Сонгох"} />
+                                        </SelectTrigger>
+                                        <SelectContent position="popper" className="z-[1002] max-h-[300px]">
+                                            {item.options.map((i, k) => {
+                                                // Support both {id, name} and {value, label} formats
+                                                const optValue = i.value !== undefined ? i.value : i.id;
+                                                const optLabel = i.label !== undefined ? i.label : i.name;
+                                                const safeVal = String(optValue) === "" ? "_empty_" : String(optValue);
+                                                return <SelectItem key={k} value={safeVal}>{optLabel}</SelectItem>;
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                                {item.type === "boolean" && (
+                                    <Select
+                                        name={item.field}
+                                        value={String(getValueFromForm(item.field) ?? item.value ?? "0")}
+                                        onValueChange={(value) => setForm(prev => ({ ...prev, [item.field]: parseInt(value) }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent position="popper" className="z-[1002]">
+                                            <SelectItem value="1">{t("active")}</SelectItem>
+                                            <SelectItem value="0">{t("inactive")}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                                {item.type === "enum" && (
+                                    <Select
+                                        name={item.field}
+                                        value={(() => {
+                                            const val = getValueFromForm(item.field);
+                                            return (val === "" || val === null || val === undefined) ? "_empty_" : String(val);
+                                        })()}
+                                        onValueChange={(value) => {
+                                            const rawValue = value === "_empty_" ? "" : value;
+                                            setForm(prev => ({ ...prev, [item.field]: rawValue }))
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={item.placeholder ? item.placeholder : t("select_placeholder")} />
+                                        </SelectTrigger>
+                                        <SelectContent position="popper" className="z-[1002] max-h-[300px]">
+                                            {item.values.map((i, k) => {
+                                                const safeVal = String(i.value) === "" ? "_empty_" : String(i.value);
+                                                return <SelectItem key={k} value={safeVal}>{i.label}</SelectItem>;
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                                {item.type === "datetime" && (
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="text-2xl" size={24} />
+                                        <DatePicker
+                                            className="bg-transparent rounded-md border-gray-600"
+                                            selected={getValueFromForm(item.field, item.type)}
+                                            showTimeSelect
+                                            onChange={(value) => handleDateChange(item.field, value, 'datetime')}
+                                            timeFormat="HH:mm"
+                                            dateFormat="yyyy-MM-dd HH:mm:ss"
+                                        />
+                                    </div>
+                                )}
+                                {item.type === "date" && (
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="text-2xl" size={24} />
+                                        <DatePicker
+                                            className="bg-transparent rounded-md border-gray-600"
+                                            selected={getValueFromForm(item.field, item.type)}
+                                            onChange={(value) => handleDateChange(item.field, value, 'date')}
+                                            dateFormat="yyyy-MM-dd"
+                                        />
+                                    </div>
+                                )}
+                                {errors[item.field] && (
+                                    <p className="text-red-500 flex items-center gap-1">
+                                        <AlertTriangle size={16} /> {errors[item.field][0]}
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    })}
                     <div className="col-span-12">{onSubmit()}</div>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     );
 });
 

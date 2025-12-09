@@ -319,6 +319,8 @@ export default function Index({ auth, dt }) {
 | `filters` | `array` | An array of objects defining the filter fields. |
 | `modes` | `array` | A list of enabled actions. Possible values: `add`, `edit`, `delete`, `export`. |
 | `methods` | `object` | Use this if the update action should be `POST` instead of `PUT`. Example: `{ update: "post" }`. |
+| `transformInitialData` | `function` | A function to transform the initial data before it populates the form for editing. `(data) => transformedData` |
+| `transformFormData` | `function` | A function to transform the form data before it is sent to the server. `(formData) => transformedFormData` |
 | `auth` | `object` | The `auth` object from Inertia. |
 | `lang` | `string` | Sets the component's language. Possible values: `mn`, `en`. (Default: `mn`) |
 | `showLangSwitcher` | `boolean` | If `true`, shows a language switcher button. (Default: `false`) |
@@ -377,7 +379,7 @@ This prop defines each column of the table. Each column is an object with the fo
     { label: "Image", type: "image", display: ["image_url"], preview: true, imageFallback: "/img/no-image.jpg" }
     ```
 
-#### Detailed explanation of the `Buttons` and `Actions` props
+#### Detailed explanation of the `Buttons`, `Actions`, `transformInitialData` and `transformFormData` props
 
 These props allow you to add custom buttons and logic on top of the component's standard actions.
 
@@ -430,6 +432,55 @@ const CustomRowActions = ({ item }) => {
 <UniversalCrud
     {...otherProps}
     actions={CustomRowActions}
+/>
+```
+
+**3. Example of `transformInitialData` and `transformFormData` props**
+
+Example of unpacking a `settings` JSON field from the server to display in the form and then packing it back before sending.
+
+```jsx
+// Assume the User model in the controller has a 'settings' JSON field.
+// $user->settings = ['theme' => 'dark', 'notifications' => true];
+
+// Inside Users/Index.jsx
+
+// Form fields (add fields for settings)
+const form_attr = [
+    { label: "Name", field: "name", type: "text", column: "col-span-12", required: true },
+    { type: "section_header", label: "Settings", column: "col-span-12" }, // Section header
+    { label: "Username", field: "username", type: "text", column: "col-span-6" },
+    { label: "Is Active", field: "active", type: "boolean", column: "col-span-6" },
+];
+
+// Transform data from the server before populating the form
+const handleTransformInitialData = (data) => {
+    const settings = data.settings || {}; // Use an empty object if 'settings' is null
+    return {
+        ...data,
+        username: settings.username || '',
+        active: settings.active ?? 1, // Default value
+    };
+};
+
+// Transform form data before sending it to the server
+const handleTransformFormData = (formData) => {
+    const { username, active, ...rest } = formData;
+    return {
+        ...rest, // Other fields like name, email, password
+        settings: {
+            username: username,
+            active: active,
+        },
+    };
+};
+
+// ...
+<UniversalCrud
+    {...otherProps}
+    form_attr={form_attr}
+    transformInitialData={handleTransformInitialData}
+    transformFormData={handleTransformFormData}
 />
 ```
 

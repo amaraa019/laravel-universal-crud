@@ -319,6 +319,8 @@ export default function Index({ auth, dt }) {
 | `filters` | `array` | Шүүлтийн талбаруудыг тодорхойлох объектуудын массив. |
 | `modes` | `array` | Идэвхжүүлэх үйлдлүүдийн жагсаалт. Боломжит утгууд: `add`, `edit`, `delete`, `export`. |
 | `methods` | `object` | Засах үйлдэл `PUT` биш `POST` байх тохиолдолд ашиглана. Жишээ: `{ update: "post" }`. |
+| `transformInitialData` | `function` | Засах үед формын анхны өгөгдлийг сервер рүү илгээхээс өмнө өөрчлөх функц. `(data) => transformedData` |
+| `transformFormData` | `function` | Формын өгөгдлийг сервер рүү илгээхээс өмнө өөрчлөх функц. `(formData) => transformedFormData` |
 | `auth` | `object` | Inertia-аас ирэх `auth` объект. |
 | `lang` | `string` | Компонентийн хэлийг тохируулна. Боломжит утга: `mn`, `en`. (Анхдагч: `mn`) |
 | `showLangSwitcher` | `boolean` | `true` байвал хэл солих товчлуурыг харуулна. (Анхдагч: `false`) |
@@ -377,7 +379,7 @@ export default function Index({ auth, dt }) {
     { label: "Зураг", type: "image", display: ["image_url"], preview: true, imageFallback: "/img/no-image.jpg" }
     ```
 
-#### `Buttons` болон `Actions` prop-ийн дэлгэрэнгүй тайлбар
+#### `Buttons`, `Actions`, `transformInitialData` болон `transformFormData` prop-ийн дэлгэрэнгүй тайлбар
 
 Эдгээр пропууд нь компонентийн стандарт үйлдлүүд дээр нэмэлт, өөрийн гэсэн товчлуур, логикийг нэмэх боломжийг олгодог.
 
@@ -430,6 +432,55 @@ const CustomRowActions = ({ item }) => {
 <UniversalCrud
     {...otherProps}
     actions={CustomRowActions}
+/>
+```
+
+**3. `transformInitialData` болон `transformFormData` prop-ийн жишээ**
+
+Серверээс ирсэн `settings` гэх JSON талбарыг форм дээр задгай харуулж, буцааж илгээхдээ нэгтгэх жишээ.
+
+```jsx
+// Controller дээр User модел нь 'settings' гэсэн JSON талбартай гэж үзье.
+// $user->settings = ['theme' => 'dark', 'notifications' => true];
+
+// Users/Index.jsx дотор
+
+// Формын талбарууд (settings-ийн талбаруудыг нэмж өгнө)
+const form_attr = [
+    { label: "Нэр", field: "name", type: "text", column: "col-span-12", required: true },
+    { type: "section_header", label: "Тохиргоо", column: "col-span-12" }, // Хэсгийн гарчиг
+    { label: "Хэрэглэгчийн нэр", field: "username", type: "text", column: "col-span-6" },
+    { label: "Идэвхтэй эсэх", field: "active", type: "boolean", column: "col-span-6" },
+];
+
+// Серверээс ирсэн өгөгдлийг формд оруулахын өмнө өөрчлөх
+const handleTransformInitialData = (data) => {
+    const settings = data.settings || {}; // 'settings' байхгүй бол хоосон объект
+    return {
+        ...data,
+        username: settings.username || '',
+        active: settings.active ?? 1, // Анхдагч утга
+    };
+};
+
+// Формын өгөгдлийг сервер лүү илгээхийн өмнө өөрчлөх
+const handleTransformFormData = (formData) => {
+    const { username, active, ...rest } = formData;
+    return {
+        ...rest, // name, email, password г.м бусад талбарууд
+        settings: {
+            username: username,
+            active: active,
+        },
+    };
+};
+
+// ...
+<UniversalCrud
+    {...otherProps}
+    form_attr={form_attr}
+    transformInitialData={handleTransformInitialData}
+    transformFormData={handleTransformFormData}
 />
 ```
 

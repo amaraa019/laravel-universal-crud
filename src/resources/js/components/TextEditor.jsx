@@ -83,10 +83,10 @@ const TextEditor = ({ handleChange, data, field, uploadUrl = "/qwerty/upload-ima
                 editorInstance.current = null;
             }
         };
-    }, [data, field, handleChange, uploadUrl]);
+    }, []); // Empty dependency array to ensuring editor only initializes once
 
     return (
-        <div ref={editorContainerRef} className="prose prose-sm max-w-none border rounded-md p-4 bg-white dark:bg-gray-800 dark:text-white"></div>
+        <div ref={editorContainerRef} className="flex min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-within:outline-none focus-within:ring-1 focus-within:ring-ring disabled:cursor-not-allowed disabled:opacity-50 prose prose-sm max-w-none dark:prose-invert"></div>
     );
 };
 

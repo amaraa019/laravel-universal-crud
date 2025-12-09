@@ -17,11 +17,8 @@ class InstallCommand extends Command
         // 1. Publish vendor assets
         $this->comment('Publishing configuration and component files...');
         $this->call('vendor:publish', ['--provider' => 'Amaraa019\UniversalCrud\UniversalCrudProvider', '--force' => true]);
-
-        // 2. Minify and overwrite the UniversalCrud.jsx component
-        $this->minifyJsxComponent();
-
-        // 3. Update package.json
+        
+        // 2. Update package.json
         $this->updateNodeDependencies();
 
         $this->line('');
@@ -30,38 +27,8 @@ class InstallCommand extends Command
         $this->comment('1. Run "npm install" to install the new packages.');
         $this->comment('2. Run "npm run dev" to build your assets.');
         $this->comment('3. Install the required shadcn/ui components: npx shadcn@latest add ...');
-
         return self::SUCCESS;
     }
-
-    /**
-     * Minify the published UniversalCrud.jsx component.
-     */
-    protected function minifyJsxComponent()
-    {
-        $this->comment('Minifying UniversalCrud.jsx component...');
-
-        $sourcePath = resource_path('js/components/UniversalCrud.jsx');
-
-        if (!file_exists($sourcePath)) {
-            $this->error('UniversalCrud.jsx not found after publishing. Skipping minification.');
-            return;
-        }
-
-        $content = file_get_contents($sourcePath);
-
-        // Basic minification: remove multi-line comments, single-line comments, and extra whitespace
-        $content = preg_replace('!/\*.*?\*/!s', '', $content); // Remove multi-line comments
-        $content = preg_replace('!//.*?!', '', $content);       // Remove single-line comments
-        $content = preg_replace('/^\s*\n/m', '', $content);     // Remove empty lines
-        $content = preg_replace('/\s+/', ' ', $content);        // Replace multiple spaces with a single space
-
-        // Overwrite the file with minified content
-        file_put_contents($sourcePath, $content);
-
-        $this->info('UniversalCrud.jsx has been minified.');
-    }
-
 
     /**
      * Update the "package.json" file with the required dependencies.
