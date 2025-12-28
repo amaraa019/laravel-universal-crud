@@ -338,13 +338,15 @@ This prop defines each column of the table. Each column is an object with the fo
 | :--- | :--- | :--- |
 | `label` | `string` | The name to be displayed in the table header. |
 | `display` | `array` | **(Very important)** Specifies which values from the data object to display. The first value is used for sorting (`accessorKey`). |
-| `type` | `string` | Specifies how to display the value. Possible values: `text`, `id`, `email`, `image`, `boolean`, `money`, `enum`, `status`. |
+| `type` | `string` | Specifies how to display the value. Possible values: `text`, `id`, `email`, `image`, `boolean`, `money`, `enum`, `status`, `custom`. |
 | `relation` | `string` | If the data is connected via a Laravel relation, specify the name of that relation. You can access nested relations using dot notation (`user.profile`). |
 | `hidden` | `boolean` | If `true`, the column will not be displayed in the table. |
 | `preview` | `boolean` | Used with `type: "image"`. If `true`, clicking the image will open it in a larger view (Lightbox). |
 | `imageFallback` | `string` | Used with `type: "image"`. The path to a default image to show if the image path is incorrect or the image is missing. Example: `/images/placeholder.png`. |
 | `toggle` | `boolean` | Used with `type: "boolean"`. If `true`, a `Switch` component is shown instead of "Yes/No" text. |
 | `values` | `array` / `object` | Used with `type: "enum"`. Converts a value from the server (e.g., 0, 1) to its corresponding text. Example: `["Pending", "Confirmed"]`. |
+| `render` | `function` | Used with `type: "custom"`. A function that returns a React component to be rendered in the cell. `(item) => ReactNode`. |
+| `field` | `string` | Used with `type: "custom"`. If `display` is missing, this field is used to generate the column ID and key. |
 
 **Examples of the `display` prop:**
 
@@ -377,6 +379,27 @@ This prop defines each column of the table. Each column is an object with the fo
     // Displays `product.image_url` in the "Image" column.
     // Setting `preview: true` allows the image to be enlarged on click.
     { label: "Image", type: "image", display: ["image_url"], preview: true, imageFallback: "/img/no-image.jpg" }
+    ```
+
+6.  **Custom Component Render:**
+    ```javascript
+    // Example of displaying a badge using custom logic in the "Coupon" column.
+    {
+        field: 'coupon',
+        label: 'Coupon',
+        type: 'custom',
+        render: (item) => {
+            const coupon = item.orders && item.orders[0] && item.orders[0].coupon;
+            if (coupon) {
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                        {coupon.code}
+                    </span>
+                );
+            }
+            return <span className="text-gray-400">-</span>;
+        }
+    }
     ```
 
 #### Detailed explanation of the `Buttons`, `Actions`, `transformInitialData` and `transformFormData` props

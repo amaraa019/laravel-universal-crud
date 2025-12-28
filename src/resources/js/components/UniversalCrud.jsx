@@ -131,32 +131,82 @@ const FilterField = ({ item, onFilterChange }) => {
     return null;
 };
 const UniversalCrud = ({
-                           api_link,
-                           auth,
-                           dt,
-                           methods = { "update": "put", "delete": "delete", "create": "post" },
-                           attributes,
-                           form_attr,
-                           subject,
-                           modes,
-                           filters,
-                           lmt,
-                           dev,
-                           formSize = "w-[1080px]",
-                           fontSize = "text-sm",
-                           actions: Actions,
-                           lang = 'mn',
-                           buttons: Buttons,
-                           previewClass,
-                           showLangSwitcher = false,
-                           transformFormData,
-                           transformInitialData,
-                       }) => {
+    api_link,
+    auth,
+    dt,
+    methods = { "update": "put", "delete": "delete", "create": "post" },
+    attributes,
+    form_attr,
+    subject,
+    modes,
+    filters,
+    lmt,
+    dev,
+    formSize = "w-[1080px]",
+    fontSize = "text-sm",
+    actions: Actions,
+    lang = 'mn',
+    buttons: Buttons,
+    previewClass,
+    showLangSwitcher = false,
+    transformFormData,
+    transformInitialData,
+}) => {
     const initialized = useRef(false);
     setLang(lang);
 
+    // Prop validation - log errors for missing/invalid props
+    useEffect(() => {
+        const errors = [];
+
+        if (!api_link) errors.push('api_link is required');
+        if (!dt) errors.push('dt (data) is required');
+        if (!attributes || !Array.isArray(attributes)) errors.push('attributes must be an array');
+        if (!modes || !Array.isArray(modes)) errors.push('modes must be an array (e.g., ["add", "edit", "delete"])');
+        if (!filters) errors.push('filters is required (can be empty array [])');
+        if (!subject) errors.push('subject is required');
+
+        // Validate attributes structure
+        if (attributes && Array.isArray(attributes)) {
+            attributes.forEach((attr, idx) => {
+                if (!attr.field) errors.push(`attributes[${idx}]: 'field' property is required (got 'key' instead?)`);
+                if (!attr.label) errors.push(`attributes[${idx}]: 'label' property is required (got 'name' instead?)`);
+                if (attr.type !== 'custom' && (!attr.display || !Array.isArray(attr.display))) errors.push(`attributes[${idx}]: 'display' must be an array`);
+                if (attr.type === 'select' && !attr.options && !attr.opt) {
+                    errors.push(`attributes[${idx}]: 'options' array is required for select type`);
+                }
+            });
+        }
+
+        // Validate form_attr structure
+        const formFields = form_attr || attributes;
+        if (formFields && Array.isArray(formFields)) {
+            formFields.forEach((attr, idx) => {
+                if (!attr.field) errors.push(`form_attr[${idx}]: 'field' property is required`);
+                if (attr.type === 'select' && !attr.options && !attr.opt) {
+                    errors.push(`form_attr[${idx}]: 'options' array is required for select type (got 'opt' instead?)`);
+                }
+            });
+        }
+
+        if (errors.length > 0) {
+            console.error('[UniversalCrud] Prop validation errors:', errors);
+            console.error('[UniversalCrud] Expected props format:');
+            console.error(`
+  attributes: [
+    { field: 'name', label: 'Нэр', type: 'text', display: ['name'] },
+    { field: 'status', label: 'Төлөв', type: 'select', display: ['status'], options: [{value: 'x', label: 'X'}] }
+  ],
+  form_attr: [...],  // same format, or omit to use attributes
+  modes: ['add', 'edit', 'delete'],
+  filters: [{ field: 'name', label: 'Хайх', type: 'text', value: '' }],
+  subject: 'Item'
+            `);
+        }
+    }, []);
+
     const limits = [10, 25, 50, 100, 250];
-    const [data, setData] = useState(dt.data || []);
+    const [data, setData] = useState(dt?.data || []);
     const [meta, setMeta] = useState({
         ...dt,
         data: undefined
@@ -369,8 +419,8 @@ const UniversalCrud = ({
             .filter((item) => !item.hidden)
             .map((item, index) => ({
                 // id-г өвөрмөц болгохын тулд index эсвэл бусад өвөрмөц утгыг ашиглана
-                id: `${item.display.join('-')}_${index}`, // ID-г display-аас үүсгэх
-                accessorKey: item.display[0], // accessorKey-г display-ийн эхний утгаар тохируулах
+                id: `${item.display ? item.display.join('-') : item.field}_${index}`, // ID-г display эсвэл field-аас үүсгэх
+                accessorKey: item.display ? item.display[0] : item.field, // accessorKey-г display эсвэл field-аар тохируулах
                 header: ({ column }) => (
                     <Button
                         variant="ghost"
@@ -409,6 +459,9 @@ const UniversalCrud = ({
                             </div> // Энийг орчуулах шаардлагагүй байж магадгүй, t("no") гэж орлуулж болно.
                         ); // Дээрх 2 мөрийг t("yes"), t("no") болгож болно.
                     if (item.type === "enum") return item.values?.[display(itemData, item)];
+                    if (item.type === "custom" && typeof item.render === "function") {
+                        return item.render(itemData);
+                    }
                     if (item.type === "status")
                         return (
                             <div className={`py-1 px-2 rounded text-white text-xs text-center ${display(itemData, item)?.color}`}>
@@ -502,24 +555,15 @@ const UniversalCrud = ({
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        state: {
-            pagination: {
-                pageIndex: 0, // Эхний хуудсаас эхэлнэ
-                pageSize: limit, // Динамик limit-г ашиглана
-            },
-        },
-        onPaginationChange: (updater) => {
-            // Pagination төлөв өөрчлөгдөхөд шинэчлэх
-            const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater;
-            table.setPageIndex(newPagination.pageIndex);
-            table.setPageSize(newPagination.pageSize);
-        },
         initialState: {
             pagination: {
                 pageIndex: 0,
-                pageSize: limit, // Анхны утга
+                pageSize: limit,
             },
         },
+        // Server-side pagination
+        manualPagination: true,
+        pageCount: Math.ceil((meta?.total || data.length || 1) / limit),
     });
     if (!init) return null;
 
@@ -904,7 +948,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                         {form[item.field] ? (
                             <div>
                                 <img className="w-auto h-44 rounded mx-auto"
-                                     src={img} alt="" />
+                                    src={img} alt="" />
                                 <p className="mt-2">{t("change_image", { label: item.label })}</p>
                             </div>
                         ) : (

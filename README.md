@@ -338,13 +338,15 @@ export default function Index({ auth, dt }) {
 | :--- | :--- | :--- |
 | `label` | `string` | Хүснэгтийн толгой дээр харагдах нэр. |
 | `display` | `array` | **(Маш чухал)** Өгөгдлийн объектоос ямар утгуудыг харуулахыг заана. Эхний утга нь эрэмбэлэлтэд ашиглагдана (`accessorKey`). |
-| `type` | `string` | Утгыг хэрхэн харуулахыг заана. Боломжит утгууд: `text`, `id`, `email`, `image`, `boolean`, `money`, `enum`, `status`. |
+| `type` | `string` | Утгыг хэрхэн харуулахыг заана. Боломжит утгууд: `text`, `id`, `email`, `image`, `boolean`, `money`, `enum`, `status`, `custom`. |
 | `relation` | `string` | Хэрэв өгөгдөл нь Laravel-ийн relation-оор холбогдсон бол тэрхүү relation-ийн нэрийг заана. Цэгээр зааглан гүн рүү хандах боломжтой (`user.profile`). |
 | `hidden` | `boolean` | `true` байвал хүснэгтэд харуулахгүй. |
 | `preview` | `boolean` | `type: "image"` үед ашиглана. `true` байвал зураг дээр дарахад томруулж хардаг (Lightbox) болно. |
 | `imageFallback` | `string` | `type: "image"` үед ашиглана. Зургийн зам буруу эсвэл зураг байхгүй үед харуулах анхдагч зургийн зам. Жишээ: `/images/placeholder.png`. |
 | `toggle` | `boolean` | `type: "boolean"` үед ашиглана. `true` байвал "Тийм/Үгүй" гэсэн бичгийн оронд `Switch` компонент харуулна. |
 | `values` | `array` / `object` | `type: "enum"` үед ашиглана. Серверээс ирсэн утгыг (жишээ нь: 0, 1) харгалзах текст рүү хөрвүүлнэ. Жишээ: `["Хүлээгдэж буй", "Баталгаажсан"]`. |
+| `render` | `function` | `type: "custom"` үед ашиглана. Тухайн нүдэнд харуулах React компонентийг буцаадаг функц. `(item) => ReactNode`. |
+| `field` | `string` | `type: "custom"` үед `display` байхгүй бол энэ талбарыг ашиглан баганын ID болон key үүсгэнэ. |
 
 **`display` prop-ийн жишээнүүд:**
 
@@ -377,6 +379,27 @@ export default function Index({ auth, dt }) {
     // "Зураг" баганад `product.image_url`-г харуулна.
     // `preview: true` гэж зааснаар зураг дээр дарахад томруулж харах боломжтой болно.
     { label: "Зураг", type: "image", display: ["image_url"], preview: true, imageFallback: "/img/no-image.jpg" }
+    ```
+
+6.  **Custom Component Render:**
+    ```javascript
+    // "Купон" баганад custom логик ашиглан badge харуулах жишээ.
+    {
+        field: 'coupon',
+        label: 'Купон',
+        type: 'custom',
+        render: (item) => {
+            const coupon = item.orders && item.orders[0] && item.orders[0].coupon;
+            if (coupon) {
+                return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                        {coupon.code}
+                    </span>
+                );
+            }
+            return <span className="text-gray-400">-</span>;
+        }
+    }
     ```
 
 #### `Buttons`, `Actions`, `transformInitialData` болон `transformFormData` prop-ийн дэлгэрэнгүй тайлбар
