@@ -155,58 +155,8 @@ const UniversalCrud = ({
     const initialized = useRef(false);
     setLang(lang);
 
-    // Prop validation - log errors for missing/invalid props
-    useEffect(() => {
-        const errors = [];
-
-        if (!api_link) errors.push('api_link is required');
-        if (!dt) errors.push('dt (data) is required');
-        if (!attributes || !Array.isArray(attributes)) errors.push('attributes must be an array');
-        if (!modes || !Array.isArray(modes)) errors.push('modes must be an array (e.g., ["add", "edit", "delete"])');
-        if (!filters) errors.push('filters is required (can be empty array [])');
-        if (!subject) errors.push('subject is required');
-
-        // Validate attributes structure
-        if (attributes && Array.isArray(attributes)) {
-            attributes.forEach((attr, idx) => {
-                if (!attr.field) errors.push(`attributes[${idx}]: 'field' property is required (got 'key' instead?)`);
-                if (!attr.label) errors.push(`attributes[${idx}]: 'label' property is required (got 'name' instead?)`);
-                if (attr.type !== 'custom' && (!attr.display || !Array.isArray(attr.display))) errors.push(`attributes[${idx}]: 'display' must be an array`);
-                if (attr.type === 'select' && !attr.options && !attr.opt) {
-                    errors.push(`attributes[${idx}]: 'options' array is required for select type`);
-                }
-            });
-        }
-
-        // Validate form_attr structure
-        const formFields = form_attr || attributes;
-        if (formFields && Array.isArray(formFields)) {
-            formFields.forEach((attr, idx) => {
-                if (!attr.field) errors.push(`form_attr[${idx}]: 'field' property is required`);
-                if (attr.type === 'select' && !attr.options && !attr.opt) {
-                    errors.push(`form_attr[${idx}]: 'options' array is required for select type (got 'opt' instead?)`);
-                }
-            });
-        }
-
-        if (errors.length > 0) {
-            console.error('[UniversalCrud] Prop validation errors:', errors);
-            console.error('[UniversalCrud] Expected props format:');
-            console.error(`
-  attributes: [
-    { field: 'name', label: 'Нэр', type: 'text', display: ['name'] },
-    { field: 'status', label: 'Төлөв', type: 'select', display: ['status'], options: [{value: 'x', label: 'X'}] }
-  ],
-  form_attr: [...],  // same format, or omit to use attributes
-  modes: ['add', 'edit', 'delete'],
-  filters: [{ field: 'name', label: 'Хайх', type: 'text', value: '' }],
-  subject: 'Item'
-            `);
-        }
-    }, []);
-
     const limits = [10, 25, 50, 100, 250];
-    const [data, setData] = useState(dt?.data || []);
+    const [data, setData] = useState(dt.data || []);
     const [meta, setMeta] = useState({
         ...dt,
         data: undefined
@@ -419,8 +369,8 @@ const UniversalCrud = ({
             .filter((item) => !item.hidden)
             .map((item, index) => ({
                 // id-г өвөрмөц болгохын тулд index эсвэл бусад өвөрмөц утгыг ашиглана
-                id: `${item.display ? item.display.join('-') : item.field}_${index}`, // ID-г display эсвэл field-аас үүсгэх
-                accessorKey: item.display ? item.display[0] : item.field, // accessorKey-г display эсвэл field-аар тохируулах
+                id: `${item.display.join('-')}_${index}`, // ID-г display-аас үүсгэх
+                accessorKey: item.display[0], // accessorKey-г display-ийн эхний утгаар тохируулах
                 header: ({ column }) => (
                     <Button
                         variant="ghost"
@@ -459,9 +409,6 @@ const UniversalCrud = ({
                             </div> // Энийг орчуулах шаардлагагүй байж магадгүй, t("no") гэж орлуулж болно.
                         ); // Дээрх 2 мөрийг t("yes"), t("no") болгож болно.
                     if (item.type === "enum") return item.values?.[display(itemData, item)];
-                    if (item.type === "custom" && typeof item.render === "function") {
-                        return item.render(itemData);
-                    }
                     if (item.type === "status")
                         return (
                             <div className={`py-1 px-2 rounded text-white text-xs text-center ${display(itemData, item)?.color}`}>
@@ -555,15 +502,24 @@ const UniversalCrud = ({
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        state: {
+            pagination: {
+                pageIndex: 0, // Эхний хуудсаас эхэлнэ
+                pageSize: limit, // Динамик limit-г ашиглана
+            },
+        },
+        onPaginationChange: (updater) => {
+            // Pagination төлөв өөрчлөгдөхөд шинэчлэх
+            const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater;
+            table.setPageIndex(newPagination.pageIndex);
+            table.setPageSize(newPagination.pageSize);
+        },
         initialState: {
             pagination: {
                 pageIndex: 0,
-                pageSize: limit,
+                pageSize: limit, // Анхны утга
             },
         },
-        // Server-side pagination
-        manualPagination: true,
-        pageCount: Math.ceil((meta?.total || data.length || 1) / limit),
     });
     if (!init) return null;
 
@@ -846,9 +802,18 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
         };
 
         const handleError = (e) => {
-            if (e.status === 422) {
-                setErrors(e.data.errors);
-                setTimeout(() => setErrors({}), 10000);
+            console.log("aldaa fuck", e?.response?.data);
+            const status = e?.response?.status || e?.status;
+            const errors = e?.response?.data?.errors || e?.data?.errors;
+            const message = e?.response?.data?.message || e?.data?.message || t("error_occurred");
+
+            if (status === 422 && errors) {
+                setErrors(errors);
+                toast.error(message, { position: "top-right" });
+                // 15 секундын дараа алдааг арилгах
+                setTimeout(() => setErrors({}), 15000);
+            } else {
+                toast.error(message, { position: "top-right" });
             }
         };
 
@@ -1024,6 +989,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         onChange={handleChange}
                                         required={item.required}
                                         placeholder={item.placeholder}
+                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "richtext" && (
@@ -1064,6 +1030,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         required={item.required}
                                         step={item.step || "1"}
                                         placeholder={item.placeholder}
+                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "textarea" && (
@@ -1073,6 +1040,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         onChange={handleChange}
                                         required={item.required}
                                         rows={10}
+                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "email" && (
@@ -1082,6 +1050,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         value={getValueFromForm(item.field)}
                                         onChange={handleChange}
                                         required={item.required}
+                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "password" && (
@@ -1091,6 +1060,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         value={getValueFromForm(item.field)}
                                         onChange={handleChange}
                                         required={item.required}
+                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
 
@@ -1129,11 +1099,17 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                 {item.type === "boolean" && (
                                     <Select
                                         name={item.field}
-                                        value={String(getValueFromForm(item.field) ?? item.value ?? "0")}
+                                        value={(() => {
+                                            // true, false, 1, 0, '1', '0' бүх утгуудыг зөв хөрвүүлэх
+                                            const rawVal = form[item.field] ?? item.value;
+                                            if (rawVal === true || rawVal === 1 || rawVal === '1') return "1";
+                                            if (rawVal === false || rawVal === 0 || rawVal === '0') return "0";
+                                            return ""; // undefined/null үед хоосон
+                                        })()}
                                         onValueChange={(value) => setForm(prev => ({ ...prev, [item.field]: parseInt(value) }))}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue />
+                                            <SelectValue placeholder="Сонгоогүй" />
                                         </SelectTrigger>
                                         <SelectContent position="popper" className="z-[1002]">
                                             <SelectItem value="1">{t("active")}</SelectItem>
