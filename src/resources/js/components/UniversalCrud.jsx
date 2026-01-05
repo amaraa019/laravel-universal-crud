@@ -60,75 +60,88 @@ import { t, setLang, getLang } from '@/lang';
 import { toast } from "sonner";
 // FilterField компонентийг тусдаа state-тэй болгосон
 const FilterField = ({ item, onFilterChange }) => {
-    const [localValue, setLocalValue] = useState(item.value || ""); // Бие даасан local state
+    // Radix UI Select does not allow empty string values. 
+    // We normalize "" to "__all__" for internal state.
+    const normalizeValue = (val) => (val === "" || val === null || val === undefined) ? "__all__" : String(val);
+    const denormalizeValue = (val) => val === "__all__" ? "" : val;
+
+    const [localValue, setLocalValue] = useState(normalizeValue(item.value));
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setLocalValue(value);
-        onFilterChange({ [name]: value }); // Parent-д утгыг дамжуулах
+        onFilterChange({ [name]: value });
     };
 
     const handleSelectChange = (value) => {
         setLocalValue(value);
-        onFilterChange({ [item.field]: value }); // Parent-д утгыг дамжуулах
+        onFilterChange({ [item.field]: denormalizeValue(value) });
     };
-    return (<div className={"w-[220px]"}>
-        {item.type === "text" &&
-            <Input
-                type="text"
-                name={item.field}
-                placeholder={item.label}
-                value={localValue}
-                onChange={handleChange}
-                className="w-[220px]"
-            />
-        }
-        {item.type === "number" &&
-            <Input
-                type="number"
-                name={item.field}
-                placeholder={item.label}
-                value={localValue}
-                onChange={handleChange}
-                className="w-[220px]"
-            />
-        }
-        {item.type === "boolean" &&
-            <Select
-                name={item.field}
-                value={localValue}
-                onValueChange={handleSelectChange}
-                className="w-[220px]"
-            >
-                <SelectTrigger>
-                    <SelectValue placeholder={item?.label || t("select_placeholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="1">{t("active")}</SelectItem>
-                    <SelectItem value="0">{t("inactive")}</SelectItem>
-                </SelectContent>
-            </Select>
-        }
-        {item.type === "enum" &&
-            <Select
-                name={item.field}
-                value={localValue}
-                onValueChange={handleSelectChange}
-            >
-                <SelectTrigger>
-                    <SelectValue placeholder={item?.label || t("select_placeholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                    {item.values.map((i, k) => (
-                        <SelectItem key={k} value={i.value}>
-                            {i.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        }
-    </div>)
-    return null;
+
+    return (
+        <div className="w-[220px]">
+            {item.type === "text" && (
+                <Input
+                    type="text"
+                    name={item.field}
+                    placeholder={item.label}
+                    value={localValue}
+                    onChange={handleChange}
+                    className="w-[220px]"
+                />
+            )}
+            {item.type === "number" && (
+                <Input
+                    type="number"
+                    name={item.field}
+                    placeholder={item.label}
+                    value={localValue}
+                    onChange={handleChange}
+                    className="w-[220px]"
+                />
+            )}
+            {item.type === "boolean" && (
+                <Select
+                    name={item.field}
+                    value={localValue}
+                    onValueChange={handleSelectChange}
+                >
+                    <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder={item?.label || t("select_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all__">{t("all") || "Бүгд"}</SelectItem>
+                        <SelectItem value="1">{t("active")}</SelectItem>
+                        <SelectItem value="0">{t("inactive")}</SelectItem>
+                    </SelectContent>
+                </Select>
+            )}
+            {item.type === "enum" && (
+                <Select
+                    name={item.field}
+                    value={localValue}
+                    onValueChange={handleSelectChange}
+                >
+                    <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder={item?.label || t("select_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {/* Safety check for item.values */}
+                        {Array.isArray(item.values) ? item.values.map((i, k) => (
+                            <SelectItem
+                                key={k}
+                                value={normalizeValue(i.value)}
+                            >
+                                {i.label}
+                            </SelectItem>
+                        )) : (
+                            <SelectItem value="__error__" disabled>Config Error</SelectItem>
+                        )}
+                    </SelectContent>
+                </Select>
+            )}
+        </div>
+    );
 };
 const UniversalCrud = ({
     api_link,
@@ -315,6 +328,7 @@ const UniversalCrud = ({
     }, [open]);
 
     const display = (item, i) => {
+        if (!i.display) return undefined;
         let str = "";
         if (i.display.length > 1) {
             if (!i.relation) {
@@ -369,8 +383,8 @@ const UniversalCrud = ({
             .filter((item) => !item.hidden)
             .map((item, index) => ({
                 // id-г өвөрмөц болгохын тулд index эсвэл бусад өвөрмөц утгыг ашиглана
-                id: `${item.display.join('-')}_${index}`, // ID-г display-аас үүсгэх
-                accessorKey: item.display[0], // accessorKey-г display-ийн эхний утгаар тохируулах
+                id: `${(item.display ? item.display.join('-') : item.field) || 'col'}_${index}`, // ID-г display-аас үүсгэх
+                accessorKey: item.display ? item.display[0] : item.field, // accessorKey-г display-ийн эхний утгаар тохируулах
                 header: ({ column }) => (
                     <Button
                         variant="ghost"
@@ -415,6 +429,7 @@ const UniversalCrud = ({
                                 {display(itemData, item)?.text}
                             </div>
                         );
+                    if (item.type === "custom" && item.render) return item.render(itemData);
                     return display(itemData, item);
                 },
             })),
@@ -496,28 +511,17 @@ const UniversalCrud = ({
     //     },
     // });
     const table = useReactTable({
-        data, // Data-г шууд дамжуулна
+        data,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        manualPagination: true,
+        pageCount: meta.last_page || 1,
         state: {
             pagination: {
-                pageIndex: 0, // Эхний хуудсаас эхэлнэ
-                pageSize: limit, // Динамик limit-г ашиглана
-            },
-        },
-        onPaginationChange: (updater) => {
-            // Pagination төлөв өөрчлөгдөхөд шинэчлэх
-            const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater;
-            table.setPageIndex(newPagination.pageIndex);
-            table.setPageSize(newPagination.pageSize);
-        },
-        initialState: {
-            pagination: {
-                pageIndex: 0,
-                pageSize: limit, // Анхны утга
+                pageIndex: (meta.current_page || 1) - 1,
+                pageSize: limit,
             },
         },
     });
