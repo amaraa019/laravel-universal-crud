@@ -60,99 +60,86 @@ import { t, setLang, getLang } from '@/lang';
 import { toast } from "sonner";
 // FilterField компонентийг тусдаа state-тэй болгосон
 const FilterField = ({ item, onFilterChange }) => {
-    // Radix UI Select does not allow empty string values. 
-    // We normalize "" to "__all__" for internal state.
-    const normalizeValue = (val) => (val === "" || val === null || val === undefined) ? "__all__" : String(val);
-    const denormalizeValue = (val) => val === "__all__" ? "" : val;
-
-    const [localValue, setLocalValue] = useState(normalizeValue(item.value));
+    const [localValue, setLocalValue] = useState(item.value || ""); // Бие даасан local state
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setLocalValue(value);
-        onFilterChange({ [name]: value });
+        onFilterChange({ [name]: value }); // Parent-д утгыг дамжуулах
     };
 
     const handleSelectChange = (value) => {
         setLocalValue(value);
-        onFilterChange({ [item.field]: denormalizeValue(value) });
+        onFilterChange({ [item.field]: value }); // Parent-д утгыг дамжуулах
     };
-
-    return (
-        <div className="w-[220px]">
-            {item.type === "text" && (
-                <Input
-                    type="text"
-                    name={item.field}
-                    placeholder={item.label}
-                    value={localValue}
-                    onChange={handleChange}
-                    className="w-[220px]"
-                />
-            )}
-            {item.type === "number" && (
-                <Input
-                    type="number"
-                    name={item.field}
-                    placeholder={item.label}
-                    value={localValue}
-                    onChange={handleChange}
-                    className="w-[220px]"
-                />
-            )}
-            {item.type === "boolean" && (
-                <Select
-                    name={item.field}
-                    value={localValue}
-                    onValueChange={handleSelectChange}
-                >
-                    <SelectTrigger className="w-[220px]">
-                        <SelectValue placeholder={item?.label || t("select_placeholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">{t("all") || "Бүгд"}</SelectItem>
-                        <SelectItem value="1">{t("active")}</SelectItem>
-                        <SelectItem value="0">{t("inactive")}</SelectItem>
-                    </SelectContent>
-                </Select>
-            )}
-            {item.type === "enum" && (
-                <Select
-                    name={item.field}
-                    value={localValue}
-                    onValueChange={handleSelectChange}
-                >
-                    <SelectTrigger className="w-[220px]">
-                        <SelectValue placeholder={item?.label || t("select_placeholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {/* Safety check for item.values */}
-                        {Array.isArray(item.values) ? item.values.map((i, k) => (
-                            <SelectItem
-                                key={k}
-                                value={normalizeValue(i.value)}
-                            >
-                                {i.label}
-                            </SelectItem>
-                        )) : (
-                            <SelectItem value="__error__" disabled>Config Error</SelectItem>
-                        )}
-                    </SelectContent>
-                </Select>
-            )}
-        </div>
-    );
+    return (<div className={"w-[220px]"}>
+        {item.type === "text" &&
+            <Input
+                type="text"
+                name={item.field}
+                placeholder={item.label}
+                value={localValue}
+                onChange={handleChange}
+                className="w-[220px]"
+            />
+        }
+        {item.type === "number" &&
+            <Input
+                type="number"
+                name={item.field}
+                placeholder={item.label}
+                value={localValue}
+                onChange={handleChange}
+                className="w-[220px]"
+            />
+        }
+        {item.type === "boolean" &&
+            <Select
+                name={item.field}
+                value={localValue}
+                onValueChange={handleSelectChange}
+                className="w-[220px]"
+            >
+                <SelectTrigger>
+                    <SelectValue placeholder={item?.label || t("select_placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="1">{t("active")}</SelectItem>
+                    <SelectItem value="0">{t("inactive")}</SelectItem>
+                </SelectContent>
+            </Select>
+        }
+        {item.type === "enum" &&
+            <Select
+                name={item.field}
+                value={localValue}
+                onValueChange={handleSelectChange}
+            >
+                <SelectTrigger>
+                    <SelectValue placeholder={item?.label || t("select_placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                    {item.values.map((i, k) => (
+                        <SelectItem key={k} value={i.value}>
+                            {i.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        }
+    </div>)
+    return null;
 };
 const UniversalCrud = ({
     api_link,
     auth,
     dt,
     methods = { "update": "put", "delete": "delete", "create": "post" },
-    attributes,
-    form_attr,
+    attributes = [],
+    form_attr = [],
     subject,
-    modes,
-    filters,
+    modes = [],
+    filters = [],
     lmt,
     dev,
     formSize = "w-[1080px]",
@@ -168,8 +155,58 @@ const UniversalCrud = ({
     const initialized = useRef(false);
     setLang(lang);
 
+    // Prop validation - log errors for missing/invalid props
+    useEffect(() => {
+        const errors = [];
+
+        if (!api_link) errors.push('api_link is required');
+        if (!dt) errors.push('dt (data) is required');
+        if (!attributes || !Array.isArray(attributes)) errors.push('attributes must be an array');
+        if (!modes || !Array.isArray(modes)) errors.push('modes must be an array (e.g., ["add", "edit", "delete"])');
+        if (!filters) errors.push('filters is required (can be empty array [])');
+        if (!subject) errors.push('subject is required');
+
+        // Validate attributes structure
+        if (attributes && Array.isArray(attributes)) {
+            attributes.forEach((attr, idx) => {
+                if (!attr.field) errors.push(`attributes[${idx}]: 'field' property is required (got 'key' instead?)`);
+                if (!attr.label) errors.push(`attributes[${idx}]: 'label' property is required (got 'name' instead?)`);
+                if (attr.type !== 'custom' && (!attr.display || !Array.isArray(attr.display))) errors.push(`attributes[${idx}]: 'display' must be an array`);
+                if (attr.type === 'select' && !attr.options && !attr.opt) {
+                    errors.push(`attributes[${idx}]: 'options' array is required for select type`);
+                }
+            });
+        }
+
+        // Validate form_attr structure
+        const formFields = form_attr || attributes;
+        if (formFields && Array.isArray(formFields)) {
+            formFields.forEach((attr, idx) => {
+                if (!attr.field) errors.push(`form_attr[${idx}]: 'field' property is required`);
+                if (attr.type === 'select' && !attr.options && !attr.opt) {
+                    errors.push(`form_attr[${idx}]: 'options' array is required for select type (got 'opt' instead?)`);
+                }
+            });
+        }
+
+        if (errors.length > 0) {
+            console.error('[UniversalCrud] Prop validation errors:', errors);
+            console.error('[UniversalCrud] Expected props format:');
+            console.error(`
+  attributes: [
+    { field: 'name', label: 'Нэр', type: 'text', display: ['name'] },
+    { field: 'status', label: 'Төлөв', type: 'select', display: ['status'], options: [{value: 'x', label: 'X'}] }
+  ],
+  form_attr: [...],  // same format, or omit to use attributes
+  modes: ['add', 'edit', 'delete'],
+  filters: [{ field: 'name', label: 'Хайх', type: 'text', value: '' }],
+  subject: 'Item'
+            `);
+        }
+    }, []);
+
     const limits = [10, 25, 50, 100, 250];
-    const [data, setData] = useState(dt.data || []);
+    const [data, setData] = useState(dt?.data || []);
     const [meta, setMeta] = useState({
         ...dt,
         data: undefined
@@ -328,7 +365,6 @@ const UniversalCrud = ({
     }, [open]);
 
     const display = (item, i) => {
-        if (!i.display) return undefined;
         let str = "";
         if (i.display.length > 1) {
             if (!i.relation) {
@@ -383,8 +419,8 @@ const UniversalCrud = ({
             .filter((item) => !item.hidden)
             .map((item, index) => ({
                 // id-г өвөрмөц болгохын тулд index эсвэл бусад өвөрмөц утгыг ашиглана
-                id: `${(item.display ? item.display.join('-') : item.field) || 'col'}_${index}`, // ID-г display-аас үүсгэх
-                accessorKey: item.display ? item.display[0] : item.field, // accessorKey-г display-ийн эхний утгаар тохируулах
+                id: `${item.display ? item.display.join('-') : item.field}_${index}`, // ID-г display эсвэл field-аас үүсгэх
+                accessorKey: item.display ? item.display[0] : item.field, // accessorKey-г display эсвэл field-аар тохируулах
                 header: ({ column }) => (
                     <Button
                         variant="ghost"
@@ -423,13 +459,15 @@ const UniversalCrud = ({
                             </div> // Энийг орчуулах шаардлагагүй байж магадгүй, t("no") гэж орлуулж болно.
                         ); // Дээрх 2 мөрийг t("yes"), t("no") болгож болно.
                     if (item.type === "enum") return item.values?.[display(itemData, item)];
+                    if (item.type === "custom" && typeof item.render === "function") {
+                        return item.render(itemData);
+                    }
                     if (item.type === "status")
                         return (
                             <div className={`py-1 px-2 rounded text-white text-xs text-center ${display(itemData, item)?.color}`}>
                                 {display(itemData, item)?.text}
                             </div>
                         );
-                    if (item.type === "custom" && item.render) return item.render(itemData);
                     return display(itemData, item);
                 },
             })),
@@ -511,19 +549,21 @@ const UniversalCrud = ({
     //     },
     // });
     const table = useReactTable({
-        data,
+        data, // Data-г шууд дамжуулна
         columns,
         getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        manualPagination: true,
-        pageCount: meta.last_page || 1,
-        state: {
+        initialState: {
             pagination: {
-                pageIndex: (meta.current_page || 1) - 1,
+                pageIndex: 0,
                 pageSize: limit,
             },
         },
+        // Server-side pagination
+        manualPagination: true,
+        pageCount: Math.ceil((meta?.total || data.length || 1) / limit),
     });
     if (!init) return null;
 
@@ -806,18 +846,9 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
         };
 
         const handleError = (e) => {
-            console.log("aldaa fuck", e?.response?.data);
-            const status = e?.response?.status || e?.status;
-            const errors = e?.response?.data?.errors || e?.data?.errors;
-            const message = e?.response?.data?.message || e?.data?.message || t("error_occurred");
-
-            if (status === 422 && errors) {
-                setErrors(errors);
-                toast.error(message, { position: "top-right" });
-                // 15 секундын дараа алдааг арилгах
+            if (e.status === 422) {
+                setErrors(e.response.data.errors);
                 setTimeout(() => setErrors({}), 15000);
-            } else {
-                toast.error(message, { position: "top-right" });
             }
         };
 
@@ -894,15 +925,22 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
 
     const Uploader = ({ item }) => {
         let img = null;
+        let fileObj = null;
+
         if (mode === "add") {
             img = images[item.field];
+            fileObj = form[item.field];
         } else {
             if (typeof form[item.field] === "string") {
-                img = form[item.field]
+                img = form[item.field];
             } else {
                 img = images[item.field];
+                fileObj = form[item.field];
             }
         }
+
+        const isFile = item.type === 'file';
+
         return (
             <Dropzone
                 onDropAccepted={(im) => handleUpload(im[0], item.field)}
@@ -916,14 +954,25 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                         <input {...getInputProps()} />
                         {form[item.field] ? (
                             <div>
-                                <img className="w-auto h-44 rounded mx-auto"
-                                    src={img} alt="" />
+                                {isFile ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
+                                            <FileSpreadsheet className="text-gray-500" size={32} />
+                                        </div>
+                                        <p className="text-sm text-gray-600 truncate max-w-[200px]">
+                                            {fileObj?.name || (typeof form[item.field] === 'string' ? form[item.field].split('/').pop() : t('file_uploaded'))}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <img className="w-auto h-44 rounded mx-auto"
+                                        src={img} alt="" />
+                                )}
                                 <p className="mt-2">{t("change_image", { label: item.label })}</p>
                             </div>
                         ) : (
                             <div className="py-6">
-                                <Image className="mx-auto" size={24} />
-                                <p>{t("upload_image_placeholder")}</p>
+                                {isFile ? <FileSpreadsheet className="mx-auto" size={24} /> : <Image className="mx-auto" size={24} />}
+                                <p>{isFile ? t("upload_file_placeholder") : t("upload_image_placeholder")}</p>
                             </div>
                         )}
                     </div>
@@ -985,7 +1034,7 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                         return (
                             <div key={key} className={item?.column || "col-span-6"}>
                                 <Label>{item.label}</Label>
-                                {item.type === "image" && <Uploader item={item} />}
+                                {["image", "file"].includes(item.type) && <Uploader item={item} />}
                                 {item.type === "text" && (
                                     <Input
                                         name={item.field}
@@ -993,7 +1042,6 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         onChange={handleChange}
                                         required={item.required}
                                         placeholder={item.placeholder}
-                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "richtext" && (
@@ -1034,7 +1082,6 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         required={item.required}
                                         step={item.step || "1"}
                                         placeholder={item.placeholder}
-                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "textarea" && (
@@ -1044,7 +1091,6 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         onChange={handleChange}
                                         required={item.required}
                                         rows={10}
-                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "email" && (
@@ -1054,7 +1100,6 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         value={getValueFromForm(item.field)}
                                         onChange={handleChange}
                                         required={item.required}
-                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
                                 {item.type === "password" && (
@@ -1064,7 +1109,6 @@ const Form = React.memo(({ methods, subject, api_link, form_attr, mode, selected
                                         value={getValueFromForm(item.field)}
                                         onChange={handleChange}
                                         required={item.required}
-                                        className={errors[item.field] ? "border-red-500 focus:ring-red-500" : ""}
                                     />
                                 )}
 
